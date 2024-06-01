@@ -1,7 +1,13 @@
 import 'package:cargo_app_driver/nonAuth/siginup.dart';
+import 'package:cargo_app_driver/services/auth.dart';
+import 'package:cargo_app_driver/services/provider.dart';
 import 'package:cargo_app_driver/widgets.dart';
 import 'package:cargo_app_driver/wrapper.dart';
+// import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+
+AuthService auth = AuthService();
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -17,54 +23,9 @@ class _LoginPageState extends State<LoginPage> {
   bool isLoading = false;
   int selectedIndex = 0;
 
-  Future<void> authenticateUser() async {
-    // Simulate a login request
-    setState(() {
-      isLoading = true;
-    });
-
-    await Future.delayed(Duration(seconds: 2)); // Simulate network delay
-
-    // Replace this with your actual authentication logic
-    if (emailController.text == 'user@mail.com' &&
-        passwordController.text == '1234') {
-      // Authentication successful, navigate to the next page
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => Wrapper(
-            isSignedIn: true,
-          ),
-        ),
-      );
-    } else {
-      // Authentication failed, show an error message
-      showDialog(
-        context: context,
-        builder: (BuildContext context) {
-          return AlertDialog(
-            title: Text('Authentication Failed'),
-            content: Text('Invalid username or password.'),
-            actions: [
-              TextButton(
-                onPressed: () {
-                  Navigator.of(context).pop();
-                },
-                child: Text('OK'),
-              ),
-            ],
-          );
-        },
-      );
-    }
-
-    setState(() {
-      isLoading = false;
-    });
-  }
-
   @override
   Widget build(BuildContext context) {
+    final userProvider = Provider.of<UserProvider>(context, listen: false);
     return Scaffold(
       body: Stack(
         children: [
@@ -76,7 +37,7 @@ class _LoginPageState extends State<LoginPage> {
           Padding(
             padding: const EdgeInsets.all(8.0),
             child: Column(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
                 const SizedBox(),
                 Container(
@@ -97,50 +58,102 @@ class _LoginPageState extends State<LoginPage> {
                       ),
                     ],
                   ),
-                  child: Column(
-                    children: [
-                      BottomBorderInputField(
-                        controller: emailController,
-                        title: "Email",
-                      ),
-                      BottomBorderInputField(
-                        controller: passwordController,
-                        title: "Password",
-                      ),
-                      const SizedBox(
-                        height: 60.0,
-                      ),
-                      CustomePrimaryButton(
-                        title: "Login",
-                        isLoading: isLoading,
-                        press: () {
-                          authenticateUser();
-                        },
-                        isWithOnlyBorder: false,
-                      ),
-                      const SizedBox(
-                        height: 15.0,
-                      ),
-                      CustomePrimaryButton(
-                        title: "Signup",
-                        isLoading: isLoading,
-                        press: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                                builder: (context) => const RegistrationPage()),
-                          );
-                        },
-                        isWithOnlyBorder: true,
-                      ),
-                    ],
-                  ),
+                  child: Column(children: [
+                    BottomBorderInputField(
+                      controller: emailController,
+                      isPasswordInput: false,
+                      title: "Email",
+                    ),
+                    BottomBorderInputField(
+                      controller: passwordController,
+                      isPasswordInput: true,
+                      title: "Password",
+                    ),
+                    const SizedBox(
+                      height: 60.0,
+                    ),
+                    CustomePrimaryButton(
+                      title: "Login",
+                      isLoading: isLoading,
+                      press: () {
+                        _logIn(userProvider);
+                      },
+                      isWithOnlyBorder: false,
+                    ),
+                    const SizedBox(
+                      height: 15.0,
+                    ),
+                    CustomePrimaryButton(
+                      title: "Signup",
+                      isLoading: false,
+                      press: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const RegistrationPage(),
+                          ),
+                        );
+                      },
+                      isWithOnlyBorder: true,
+                    ),
+                  ],),
                 ),
-                Text("Driver's App", style: TextStyle(fontSize: 20),),
               ],
             ),
           )
         ],
+      ),
+    );
+  }
+
+  _logIn(UserProvider userProvider) async {
+    // Simulate a login request
+    setState(() {
+      isLoading = true;
+    });
+
+    // await Future.delayed(Duration(seconds: 2));
+
+    // Replace this with your actual authentication logic
+    if (emailController.text != '' || passwordController.text != '') {
+      // Authentication successful, navigate to the next page
+      final user = await auth.signInUser(
+          emailController.text, passwordController.text, userProvider);
+      if (user != null) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => AuthCheck(),
+          ),
+        );
+        setState(() {
+          isLoading = false;
+        });
+      } else {
+        setState(() {
+          isLoading = false;
+        });
+        // Authentication failed, show an error message
+
+        _showToast(context, "No user found");
+      }
+    } else {
+      setState(() {
+        isLoading = false;
+      });
+      // Authentication failed, show an error message
+
+      _showToast(context, "Please fill all fields");
+    }
+  }
+
+  void _showToast(BuildContext context, String message) {
+    final scaffold = ScaffoldMessenger.of(context);
+    scaffold.showSnackBar(
+      SnackBar(
+        content: Text(message),
+        action: SnackBarAction(
+            label: 'UNDO', onPressed: scaffold.hideCurrentSnackBar),
       ),
     );
   }

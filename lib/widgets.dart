@@ -2,15 +2,21 @@ import 'package:flutter/material.dart';
 
 class BottomBorderInputField extends StatelessWidget {
   final String title;
+  final bool isPasswordInput;
   final TextEditingController controller;
-  const BottomBorderInputField(
-      {super.key, required this.title, required this.controller});
+  const BottomBorderInputField({
+    super.key,
+    required this.title,
+    required this.isPasswordInput,
+    required this.controller,
+  });
 
   @override
   Widget build(BuildContext context) {
     return SizedBox(
       width: double.infinity,
       child: TextField(
+        obscureText: isPasswordInput,
         controller: controller,
         decoration: InputDecoration(
           hintText: title,
@@ -22,6 +28,7 @@ class BottomBorderInputField extends StatelessWidget {
     );
   }
 }
+
 
 class CustomePrimaryButton extends StatelessWidget {
   final String title;
