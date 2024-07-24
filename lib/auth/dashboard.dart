@@ -565,327 +565,262 @@ class _DashboardPageState extends State<DashboardPage> {
                   infoWindow: InfoWindow(title: 'Destination'),
                 ));
 
-                return (isPickedupConfirmed)
-                    ? DraggableScrollableSheet(
-                        initialChildSize:
-                            0.2, // Initial size of the sheet (30% of the screen)
-                        minChildSize:
-                            0.2, // Minimum size of the sheet (10% of the screen)
-                        maxChildSize:
-                            0.3, // Maximum size of the sheet (80% of the screen)
-                        builder: (BuildContext context,
-                            ScrollController scrollController) {
-                          return Container(
-                              padding: const EdgeInsets.all(16),
-                              decoration: const BoxDecoration(
-                                color: Colors.white,
-                                borderRadius: BorderRadius.vertical(
-                                  top: Radius.circular(15),
-                                ),
+                return DraggableScrollableSheet(
+                  initialChildSize:
+                      0.2, // Initial size of the sheet (30% of the screen)
+                  minChildSize:
+                      0.2, // Minimum size of the sheet (10% of the screen)
+                  maxChildSize:
+                      0.8, // Maximum size of the sheet (80% of the screen)
+                  builder: (BuildContext context,
+                      ScrollController scrollController) {
+                    return Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: const BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.vertical(
+                            top: Radius.circular(15),
+                          ),
+                        ),
+                        child: SingleChildScrollView(
+                          controller: scrollController,
+                          child: Column(
+                            children: [
+                              Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                children: [
+                                  const Row(
+                                    children: [
+                                      CircleAvatar(
+                                        radius: 25,
+                                      ),
+                                      Padding(
+                                        padding: EdgeInsets.all(8.0),
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.center,
+                                          children: [
+                                            Text(
+                                              "Allen Swai",
+                                              style: TextStyle(
+                                                  fontSize: 13,
+                                                  fontWeight: FontWeight.w600),
+                                            ),
+                                            Text(
+                                              "Client",
+                                              style: TextStyle(
+                                                  fontSize: 11,
+                                                  fontWeight: FontWeight.w500),
+                                            ),
+                                          ],
+                                        ),
+                                      )
+                                    ],
+                                  ),
+                                  (isSelected)
+                                      ? Container(
+                                          width: 35,
+                                          height: 35,
+                                          decoration: const BoxDecoration(
+                                            borderRadius: BorderRadius.all(
+                                              Radius.circular(35),
+                                            ),
+                                            color: Colors.blue,
+                                          ),
+                                          child: const Icon(
+                                            Icons.phone,
+                                            size: 18,
+                                            color: Colors.white,
+                                          ),
+                                        )
+                                      : Container(),
+                                ],
                               ),
-                              child: SingleChildScrollView(
-                                controller: scrollController,
-                                child: Column(
-                                  children: [
-                                    Row(
+                              const SizedBox(
+                                height: 20,
+                              ),
+                              (!isSelected)
+                                  ? Column(
                                       children: [
                                         Row(
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.spaceBetween,
                                           children: [
-                                            Text("Distance: "),
-                                            Text("${_distance.toString()} KM")
-                                          ],
-                                        )
-                                      ],
-                                    )
-                                  ],
-                                ),
-                              ));
-                        },
-                      )
-                    : DraggableScrollableSheet(
-                        initialChildSize:
-                            0.2, // Initial size of the sheet (30% of the screen)
-                        minChildSize:
-                            0.2, // Minimum size of the sheet (10% of the screen)
-                        maxChildSize:
-                            0.8, // Maximum size of the sheet (80% of the screen)
-                        builder: (BuildContext context,
-                            ScrollController scrollController) {
-                          return Container(
-                              padding: const EdgeInsets.all(16),
-                              decoration: const BoxDecoration(
-                                color: Colors.white,
-                                borderRadius: BorderRadius.vertical(
-                                  top: Radius.circular(15),
-                                ),
-                              ),
-                              child: SingleChildScrollView(
-                                controller: scrollController,
-                                child: Column(
-                                  children: [
-                                    Row(
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.spaceBetween,
-                                      children: [
-                                        const Row(
-                                          children: [
-                                            CircleAvatar(
-                                              radius: 25,
-                                            ),
-                                            Padding(
-                                              padding: EdgeInsets.all(8.0),
-                                              child: Column(
+                                            Column(
                                                 crossAxisAlignment:
                                                     CrossAxisAlignment.start,
                                                 mainAxisAlignment:
-                                                    MainAxisAlignment.center,
+                                                    MainAxisAlignment.start,
                                                 children: [
-                                                  Text(
-                                                    "Allen Swai",
-                                                    style: TextStyle(
-                                                        fontSize: 13,
-                                                        fontWeight:
-                                                            FontWeight.w600),
-                                                  ),
-                                                  Text(
-                                                    "Client",
-                                                    style: TextStyle(
-                                                        fontSize: 11,
-                                                        fontWeight:
-                                                            FontWeight.w500),
-                                                  ),
-                                                ],
-                                              ),
-                                            )
-                                          ],
-                                        ),
-                                        (isSelected)
-                                            ? Container(
-                                                width: 35,
-                                                height: 35,
-                                                decoration: const BoxDecoration(
-                                                  borderRadius:
-                                                      BorderRadius.all(
-                                                    Radius.circular(35),
-                                                  ),
-                                                  color: Colors.blue,
-                                                ),
-                                                child: const Icon(
-                                                  Icons.phone,
-                                                  size: 18,
-                                                  color: Colors.white,
-                                                ),
-                                              )
-                                            : Container(),
-                                      ],
-                                    ),
-                                    const SizedBox(
-                                      height: 20,
-                                    ),
-                                    (!isSelected)
-                                        ? Column(
-                                            children: [
-                                              Row(
-                                                mainAxisAlignment:
-                                                    MainAxisAlignment
-                                                        .spaceBetween,
-                                                children: [
-                                                  Column(
-                                                      crossAxisAlignment:
-                                                          CrossAxisAlignment
-                                                              .start,
-                                                      mainAxisAlignment:
-                                                          MainAxisAlignment
-                                                              .start,
-                                                      children: [
-                                                        const Text(
-                                                            "Package type"),
-                                                        Text(
-                                                            request.packageType,
-                                                            style: const TextStyle(
-                                                                fontWeight:
-                                                                    FontWeight
-                                                                        .bold)),
-                                                      ]),
-                                                  Column(children: [
-                                                    const Text("Package size"),
-                                                    Text(
-                                                      '${request.packageSize} Ton',
+                                                  const Text("Package type"),
+                                                  Text(request.packageType,
                                                       style: const TextStyle(
                                                           fontWeight:
-                                                              FontWeight.bold),
-                                                    ),
-                                                  ])
-                                                ],
+                                                              FontWeight.bold)),
+                                                ]),
+                                            Column(children: [
+                                              const Text("Transport"),
+                                              Text(
+                                                '${request.packageSize} ',
+                                                style: const TextStyle(
+                                                    fontWeight:
+                                                        FontWeight.bold),
                                               ),
-                                              const Divider(),
-                                              const SizedBox(
-                                                height: 5,
-                                              ),
-                                              Row(
+                                            ])
+                                          ],
+                                        ),
+                                        const Divider(),
+                                        const SizedBox(
+                                          height: 5,
+                                        ),
+                                        Row(
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.spaceBetween,
+                                          children: [
+                                            Column(
+                                                crossAxisAlignment:
+                                                    CrossAxisAlignment.start,
                                                 mainAxisAlignment:
-                                                    MainAxisAlignment
-                                                        .spaceBetween,
+                                                    MainAxisAlignment.start,
                                                 children: [
-                                                  Column(
-                                                      crossAxisAlignment:
-                                                          CrossAxisAlignment
-                                                              .start,
-                                                      mainAxisAlignment:
-                                                          MainAxisAlignment
-                                                              .start,
-                                                      children: [
-                                                        const Text(
-                                                            "Destination"),
-                                                        Text(
-                                                            request.destination,
-                                                            style: const TextStyle(
-                                                                fontWeight:
-                                                                    FontWeight
-                                                                        .bold)),
-                                                      ]),
-                                                  Column(
-                                                    children: [
-                                                      const Text(
-                                                          "Distance (Kilometer)"),
-                                                      Text(
-                                                        '${_distance.toString()}',
-                                                        style: TextStyle(
-                                                            fontWeight:
-                                                                FontWeight
-                                                                    .bold),
-                                                      ),
-                                                    ],
-                                                  )
-                                                ],
-                                              ),
-                                              Divider(),
-                                              const SizedBox(
-                                                height: 10,
-                                              ),
-                                              (request.pictureUrl == null)
-                                                  ? Text("Loading image...")
-                                                  : Image.network(
-                                                      "${request.pictureUrl}"),
-                                              const SizedBox(height: 10),
-                                              Row(
-                                                  mainAxisAlignment:
-                                                      MainAxisAlignment
-                                                          .spaceBetween,
-                                                  children: [
-                                                    Text("Bid Price"),
-                                                    Text(
-                                                      '${request.estimatedPrice.toString()} Tsh',
-                                                      style: TextStyle(
-                                                          fontSize: 18,
+                                                  const Text("Destination"),
+                                                  Text(request.destination,
+                                                      style: const TextStyle(
                                                           fontWeight:
-                                                              FontWeight.bold),
-                                                    ),
-                                                  ]),
-                                              const SizedBox(height: 10),
-                                              TextField(
-                                                controller: controller,
-                                                onTap: () {},
-                                                decoration: InputDecoration(
-                                                  contentPadding:
-                                                      EdgeInsets.zero,
-                                                  // prefixIcon: const Icon(Icons.location_on),
-                                                  hintText:
-                                                      "Enter Bid price upto ${request.estimatedPrice.toString()}",
-                                                  hintStyle:
-                                                      TextStyle(fontSize: 15),
-                                                ),
+                                                              FontWeight.bold)),
+                                                ]),
+                                          ],
+                                        ),
+                                        Divider(),
+                                        Row(
+                                            mainAxisAlignment:
+                                                MainAxisAlignment.spaceBetween,
+                                            children: [
+                                              Text("Bid Price"),
+                                              Text(
+                                                '${request.estimatedPrice.toStringAsFixed(1)} Tsh',
+                                                style: TextStyle(
+                                                    fontSize: 18,
+                                                    fontWeight:
+                                                        FontWeight.bold),
                                               ),
-                                            ],
-                                          )
-                                        : SizedBox(),
-                                    const SizedBox(height: 10),
-                                    (!isSelected)
-                                        ? CustomePrimaryButton(
-                                            title: "Accept Request",
-                                            press: () {
-                                              acceptRequest(
-                                                  controller,
-                                                  request.estimatedPrice,
-                                                  request.id);
-                                            },
-                                            isWithOnlyBorder: false,
-                                            isLoading: _isLoading)
-                                        : CustomePrimaryButton(
-                                            title: (_isLoading)
-                                                ? "wait..."
-                                                : "Confirm Pickup",
-                                            press: () {
-                                              _confirmRequest(request.id);
-                                            },
-                                            isWithOnlyBorder: false,
-                                            isLoading: false),
-                                    const SizedBox(
-                                      height: 5,
-                                    ),
-                                    Center(
-                                      child: isRequestCanceled
-                                          ? const Text(
-                                              'Request Canceled',
+                                            ]),
+                                        Divider(),
+                                        Column(
+                                          children: [
+                                            const Text("Distance (Kilometer)"),
+                                            Text(
+                                              '${_distance.toStringAsFixed(1)}',
                                               style: TextStyle(
-                                                  fontSize: 18,
-                                                  color: Colors.red),
-                                            )
-                                          : Dismissible(
-                                              key: UniqueKey(),
-                                              direction:
-                                                  DismissDirection.horizontal,
-                                              onDismissed: (direction) {
-                                                // Handle the dismissal action
-                                                if (mounted) {
-                                                  setState(() {
-                                                    isDismissed = true;
-                                                    cancelClientRequest();
-                                                  });
-                                                }
-                                              },
-                                              child: Container(
-                                                padding:
-                                                    const EdgeInsets.all(10),
-                                                child: const Text(
-                                                  'Swipe to cancel!',
-                                                  style:
-                                                      TextStyle(fontSize: 18),
-                                                ),
-                                              ),
-                                              // Customize the background and secondaryBackground
-                                              background: Container(
-                                                color: Colors.red,
-                                                alignment: Alignment.centerLeft,
-                                                padding:
-                                                    const EdgeInsets.symmetric(
-                                                        horizontal: 20),
-                                                child: const Icon(
-                                                  Icons.cancel,
-                                                  color: Colors.white,
-                                                  size: 30,
-                                                ),
-                                              ),
-                                              secondaryBackground: Container(
-                                                color: Colors.red,
-                                                alignment:
-                                                    Alignment.centerRight,
-                                                padding:
-                                                    const EdgeInsets.symmetric(
-                                                        horizontal: 20),
-                                                child: const Icon(
-                                                  Icons.cancel,
-                                                  color: Colors.white,
-                                                  size: 30,
-                                                ),
-                                              ),
+                                                  fontWeight: FontWeight.bold),
                                             ),
-                                    ),
-                                  ],
-                                ),
-                              ));
-                        },
-                      );
+                                          ],
+                                        ),
+                                        Divider(),
+                                        const SizedBox(
+                                          height: 10,
+                                        ),
+                                        (request.pictureUrl == null)
+                                            ? Text("Loading image...")
+                                            : Image.network(
+                                                "${request.pictureUrl}"),
+                                        const SizedBox(height: 10),
+                                        const SizedBox(height: 10),
+                                        TextField(
+                                          controller: controller,
+                                          onTap: () {},
+                                          decoration: InputDecoration(
+                                            contentPadding: EdgeInsets.zero,
+                                            // prefixIcon: const Icon(Icons.location_on),
+                                            hintText:
+                                                "Enter Bid price upto ${request.estimatedPrice.toString()}",
+                                            hintStyle: TextStyle(fontSize: 15),
+                                          ),
+                                        ),
+                                      ],
+                                    )
+                                  : SizedBox(),
+                              const SizedBox(height: 10),
+                              (!isSelected)
+                                  ? CustomePrimaryButton(
+                                      title: "Accept Request",
+                                      press: () {
+                                        acceptRequest(controller,
+                                            request.estimatedPrice, request.id);
+                                      },
+                                      isWithOnlyBorder: false,
+                                      isLoading: _isLoading)
+                                  : CustomePrimaryButton(
+                                      title: (_isLoading)
+                                          ? "wait..."
+                                          : "Confirm Pickup",
+                                      press: () {
+                                        _confirmRequest(request.id);
+                                      },
+                                      isWithOnlyBorder: false,
+                                      isLoading: false),
+                              const SizedBox(
+                                height: 5,
+                              ),
+                              Center(
+                                child: isRequestCanceled
+                                    ? const Text(
+                                        'Request Canceled',
+                                        style: TextStyle(
+                                            fontSize: 18, color: Colors.red),
+                                      )
+                                    : Dismissible(
+                                        key: UniqueKey(),
+                                        direction: DismissDirection.horizontal,
+                                        onDismissed: (direction) {
+                                          // Handle the dismissal action
+                                          if (mounted) {
+                                            setState(() {
+                                              isDismissed = true;
+                                              cancelClientRequest();
+                                            });
+                                          }
+                                        },
+                                        child: Container(
+                                          padding: const EdgeInsets.all(10),
+                                          child: const Text(
+                                            'Swipe to cancel!',
+                                            style: TextStyle(fontSize: 18),
+                                          ),
+                                        ),
+                                        // Customize the background and secondaryBackground
+                                        background: Container(
+                                          color: Colors.red,
+                                          alignment: Alignment.centerLeft,
+                                          padding: const EdgeInsets.symmetric(
+                                              horizontal: 20),
+                                          child: const Icon(
+                                            Icons.cancel,
+                                            color: Colors.white,
+                                            size: 30,
+                                          ),
+                                        ),
+                                        secondaryBackground: Container(
+                                          color: Colors.red,
+                                          alignment: Alignment.centerRight,
+                                          padding: const EdgeInsets.symmetric(
+                                              horizontal: 20),
+                                          child: const Icon(
+                                            Icons.cancel,
+                                            color: Colors.white,
+                                            size: 30,
+                                          ),
+                                        ),
+                                      ),
+                              ),
+                            ],
+                          ),
+                        ));
+                  },
+                );
               }
             },
           )
