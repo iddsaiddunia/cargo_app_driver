@@ -6,11 +6,13 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_polyline_points/flutter_polyline_points.dart';
+import 'package:geocoding/geocoding.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:http/http.dart' as http;
 import 'package:permission_handler/permission_handler.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'dart:math' as math;
 
 class DashboardPage extends StatefulWidget {
   const DashboardPage({super.key});
@@ -23,18 +25,22 @@ class _DashboardPageState extends State<DashboardPage> {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final TextEditingController controller = TextEditingController();
   bool isOnline = true;
+  double _distance = 0.0;
 
+  bool isGeocodeSet = false;
   bool _isLoading = false;
   bool isDismissed = false;
   bool isRequestCanceled = false;
   bool isRequestAccepted = false;
+  bool isPickedupConfirmed = true;
   LatLng? _currentLatLng;
+  LatLng? _destinationLatLng;
   GeoPoint? clientCurrentLocation;
   late Position? _currentPosition;
   GoogleMapController? _mapController;
   late String _mapStyle;
-  Set<Marker> _markers = {};
-  Set<Polyline> _polylines = {};
+  final Set<Marker> _markers = {};
+  final Set<Polyline> _polylines = {};
   Stream<QuerySnapshot>? _requestsStream;
 
   User? user = FirebaseAuth.instance.currentUser;
@@ -269,6 +275,25 @@ class _DashboardPageState extends State<DashboardPage> {
     }
   }
 
+  double calculateDistance(LatLng start, LatLng end) {
+    const double earthRadius = 6371; // Radius of the Earth in kilometers
+    final double dLat = _toRadians(end.latitude - start.latitude);
+    final double dLng = _toRadians(end.longitude - start.longitude);
+
+    final double a = math.sin(dLat / 2) * math.sin(dLat / 2) +
+        math.cos(_toRadians(start.latitude)) *
+            math.cos(_toRadians(end.latitude)) *
+            math.sin(dLng / 2) *
+            math.sin(dLng / 2);
+
+    final double c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a));
+    return earthRadius * c;
+  }
+
+  double _toRadians(double degree) {
+    return degree * math.pi / 180;
+  }
+
   Future<void> _drawRoute(LatLng driverLatLng, GeoPoint? clientGeoPoint) async {
     final LatLng clientLatLng =
         LatLng(clientGeoPoint!.latitude, clientGeoPoint!.longitude);
@@ -303,6 +328,90 @@ class _DashboardPageState extends State<DashboardPage> {
       }
     } else {
       throw Exception('Failed to load directions');
+    }
+  }
+
+  // Future<void> _geocodeDestination(String? destinationAddress) async {
+  //   if (destinationAddress == null) {
+  //     print('No destination address provided.');
+  //     return;
+  //   }
+
+  //   try {
+  //     // print('Geocoding destination address: $destinationAddress');
+  //     List<Location> locations = await locationFromAddress(destinationAddress);
+  //     if (locations.isNotEmpty) {
+  //       LatLng destinationLatLng = LatLng(
+  //         locations.first.latitude,
+  //         locations.first.longitude,
+  //       );
+
+  //       print('Geocoded destination location: $destinationLatLng');
+
+  //       _markers.add(Marker(
+  //         markerId: MarkerId('destination'),
+  //         position: destinationLatLng,
+  //         icon:
+  //             BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueGreen),
+  //         infoWindow: InfoWindow(title: 'Destination'),
+  //       ));
+
+  //       // Trigger a rebuild to update the map with the new marker
+  //       setState(() {});
+  //     }
+  //   } catch (e) {
+  //     print('Geocoding failed: $e');
+  //   }
+  // }
+
+  Future<void> _geocodeDestination(
+      String destination, LatLng driverLatLng) async {
+    final String apiKey = 'AIzaSyAjsJbodhou5nNntMWPdhRsWqz2h1Tgzoc';
+    final String url =
+        'https://maps.googleapis.com/maps/api/geocode/json?address=${Uri.encodeComponent(destination)}&key=$apiKey';
+
+    final response = await http.get(Uri.parse(url));
+    final data = json.decode(response.body);
+
+    if (data['status'] == 'OK') {
+      final location = data['results'][0]['geometry']['location'];
+      final LatLng destinationLatLng = LatLng(location['lat'], location['lng']);
+
+      // Calculate the distance
+      double distance = calculateDistance(driverLatLng, destinationLatLng);
+
+      setState(() {
+        _destinationLatLng = destinationLatLng;
+        // Add the distance to the state
+        _distance = distance;
+        isGeocodeSet = true;
+      });
+    } else {
+      throw Exception('Failed to geocode destination');
+    }
+  }
+
+  _confirmRequest(String requestId) async {
+    setState(() {
+      _isLoading = true;
+    });
+    try {
+      DocumentReference requestRef =
+          _firestore.collection('Requests').doc(requestId);
+
+      await requestRef.update({'driverPickup': true}).then((value) => {
+            setState(() {
+              isPickedupConfirmed = true;
+              _isLoading = false;
+            })
+          });
+
+      print("updated successfully");
+    } catch (e) {
+      print("failed to update confirmPickup $e");
+      setState(() {
+        _isLoading = false;
+      });
     }
   }
 
@@ -419,6 +528,27 @@ class _DashboardPageState extends State<DashboardPage> {
                   request.clientCurrentLocation!.longitude,
                 );
 
+                // Call the _geocodeDestination function to add the destination marker
+                if (isGeocodeSet == false) {
+                  _geocodeDestination(request.destination, _currentLatLng!);
+                } else {
+                  print("problem in destination location ----------->");
+                }
+                // Draw polyline
+                if (_currentLatLng != null &&
+                    _polylines.isEmpty &&
+                    isPickedupConfirmed == false) {
+                  _drawRoute(_currentLatLng!, request.clientCurrentLocation);
+                  print("heloo ==========>");
+                } else if (_currentLatLng != null &&
+                    _polylines.isEmpty &&
+                    isPickedupConfirmed == true) {
+                  _drawRoute(
+                      _currentLatLng!,
+                      GeoPoint(_destinationLatLng!.latitude,
+                          _destinationLatLng!.longitude));
+                }
+
                 _markers.add(Marker(
                   markerId: MarkerId('client'),
                   position: clientLatLng,
@@ -427,262 +557,335 @@ class _DashboardPageState extends State<DashboardPage> {
                   infoWindow: InfoWindow(title: 'Client'),
                 ));
 
-                // Draw polyline
-                if (_currentLatLng != null) {
-                  // _drawRoute(_currentLatLng!, request.clientCurrentLocation);
-                  print("heloo ==========>");
-                }
+                _markers.add(Marker(
+                  markerId: MarkerId('destination'),
+                  position: _destinationLatLng!,
+                  icon: BitmapDescriptor.defaultMarkerWithHue(
+                      BitmapDescriptor.hueRed),
+                  infoWindow: InfoWindow(title: 'Destination'),
+                ));
 
-                return DraggableScrollableSheet(
-                  initialChildSize:
-                      0.2, // Initial size of the sheet (30% of the screen)
-                  minChildSize:
-                      0.2, // Minimum size of the sheet (10% of the screen)
-                  maxChildSize:
-                      0.8, // Maximum size of the sheet (80% of the screen)
-                  builder: (BuildContext context,
-                      ScrollController scrollController) {
-                    return Container(
-                        padding: const EdgeInsets.all(16),
-                        decoration: const BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.vertical(
-                            top: Radius.circular(15),
-                          ),
-                        ),
-                        child: SingleChildScrollView(
-                          controller: scrollController,
-                          child: Column(
-                            children: [
-                              Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
-                                children: [
-                                  const Row(
-                                    children: [
-                                      CircleAvatar(
-                                        radius: 25,
-                                      ),
-                                      Padding(
-                                        padding: EdgeInsets.all(8.0),
-                                        child: Column(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.start,
-                                          mainAxisAlignment:
-                                              MainAxisAlignment.center,
-                                          children: [
-                                            Text(
-                                              "Allen Swai",
-                                              style: TextStyle(
-                                                  fontSize: 13,
-                                                  fontWeight: FontWeight.w600),
-                                            ),
-                                            Text(
-                                              "Client",
-                                              style: TextStyle(
-                                                  fontSize: 11,
-                                                  fontWeight: FontWeight.w500),
-                                            ),
-                                          ],
-                                        ),
-                                      )
-                                    ],
-                                  ),
-                                  (isSelected)
-                                      ? Container(
-                                          width: 35,
-                                          height: 35,
-                                          decoration: const BoxDecoration(
-                                            borderRadius: BorderRadius.all(
-                                              Radius.circular(35),
-                                            ),
-                                            color: Colors.blue,
-                                          ),
-                                          child: const Icon(
-                                            Icons.phone,
-                                            size: 18,
-                                            color: Colors.white,
-                                          ),
-                                        )
-                                      : Container(),
-                                ],
+                return (isPickedupConfirmed)
+                    ? DraggableScrollableSheet(
+                        initialChildSize:
+                            0.2, // Initial size of the sheet (30% of the screen)
+                        minChildSize:
+                            0.2, // Minimum size of the sheet (10% of the screen)
+                        maxChildSize:
+                            0.3, // Maximum size of the sheet (80% of the screen)
+                        builder: (BuildContext context,
+                            ScrollController scrollController) {
+                          return Container(
+                              padding: const EdgeInsets.all(16),
+                              decoration: const BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.vertical(
+                                  top: Radius.circular(15),
+                                ),
                               ),
-                              const SizedBox(
-                                height: 20,
-                              ),
-                              (!isSelected)
-                                  ? Column(
+                              child: SingleChildScrollView(
+                                controller: scrollController,
+                                child: Column(
+                                  children: [
+                                    Row(
                                       children: [
                                         Row(
-                                          mainAxisAlignment:
-                                              MainAxisAlignment.spaceBetween,
                                           children: [
-                                            Column(
-                                                crossAxisAlignment:
-                                                    CrossAxisAlignment.start,
-                                                mainAxisAlignment:
-                                                    MainAxisAlignment.start,
-                                                children: [
-                                                  const Text("Package type"),
-                                                  Text(request.packageType,
-                                                      style: const TextStyle(
-                                                          fontWeight:
-                                                              FontWeight.bold)),
-                                                ]),
-                                            Column(children: [
-                                              const Text("Package size"),
-                                              Text(
-                                                '${request.packageSize} Ton',
-                                                style: const TextStyle(
-                                                    fontWeight:
-                                                        FontWeight.bold),
-                                              ),
-                                            ])
+                                            Text("Distance: "),
+                                            Text("${_distance.toString()} KM")
                                           ],
-                                        ),
-                                        const Divider(),
-                                        const SizedBox(
-                                          height: 5,
-                                        ),
-                                        Row(
-                                          mainAxisAlignment:
-                                              MainAxisAlignment.spaceBetween,
-                                          children: [
-                                            Column(
-                                                crossAxisAlignment:
-                                                    CrossAxisAlignment.start,
-                                                mainAxisAlignment:
-                                                    MainAxisAlignment.start,
-                                                children: [
-                                                  const Text("Destination"),
-                                                  Text(request.destination,
-                                                      style: const TextStyle(
-                                                          fontWeight:
-                                                              FontWeight.bold)),
-                                                ]),
-                                            Column(children: [
-                                              const Text(
-                                                  "Distance (Kilometer)"),
-                                              const Text(
-                                                '3.4',
-                                                style: TextStyle(
-                                                    fontWeight:
-                                                        FontWeight.bold),
-                                              ),
-                                            ])
-                                          ],
-                                        ),
-                                        Divider(),
-                                        const SizedBox(
-                                          height: 10,
-                                        ),
-                                        (request.pictureUrl == null)
-                                            ? Text("Loading image...")
-                                            : Image.network(
-                                                "${request.pictureUrl}"),
-                                        const SizedBox(height: 10),
-                                        Row(
-                                            mainAxisAlignment:
-                                                MainAxisAlignment.spaceBetween,
-                                            children: [
-                                              Text("Bid Price"),
-                                              Text(
-                                                '${request.estimatedPrice.toString()} Tsh',
-                                                style: TextStyle(
-                                                    fontSize: 18,
-                                                    fontWeight:
-                                                        FontWeight.bold),
-                                              ),
-                                            ]),
-                                        const SizedBox(height: 10),
-                                        TextField(
-                                          controller: controller,
-                                          onTap: () {},
-                                          decoration: InputDecoration(
-                                            contentPadding: EdgeInsets.zero,
-                                            // prefixIcon: const Icon(Icons.location_on),
-                                            hintText:
-                                                "Enter Bid price upto ${request.estimatedPrice.toString()}",
-                                            hintStyle: TextStyle(fontSize: 15),
-                                          ),
-                                        ),
+                                        )
                                       ],
                                     )
-                                  : SizedBox(),
-                              const SizedBox(height: 10),
-                              (!isSelected)
-                                  ? CustomePrimaryButton(
-                                      title: "Accept Request",
-                                      press: () {
-                                        acceptRequest(controller,
-                                            request.estimatedPrice, request.id);
-                                      },
-                                      isWithOnlyBorder: false,
-                                      isLoading: _isLoading)
-                                  : CustomePrimaryButton(
-                                      title: "Confirm Pickup",
-                                      press: () {},
-                                      isWithOnlyBorder: false,
-                                      isLoading: false),
-                              const SizedBox(
-                                height: 5,
+                                  ],
+                                ),
+                              ));
+                        },
+                      )
+                    : DraggableScrollableSheet(
+                        initialChildSize:
+                            0.2, // Initial size of the sheet (30% of the screen)
+                        minChildSize:
+                            0.2, // Minimum size of the sheet (10% of the screen)
+                        maxChildSize:
+                            0.8, // Maximum size of the sheet (80% of the screen)
+                        builder: (BuildContext context,
+                            ScrollController scrollController) {
+                          return Container(
+                              padding: const EdgeInsets.all(16),
+                              decoration: const BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.vertical(
+                                  top: Radius.circular(15),
+                                ),
                               ),
-                              Center(
-                                child: isRequestCanceled
-                                    ? const Text(
-                                        'Request Canceled',
-                                        style: TextStyle(
-                                            fontSize: 18, color: Colors.red),
-                                      )
-                                    : Dismissible(
-                                        key: UniqueKey(),
-                                        direction: DismissDirection.horizontal,
-                                        onDismissed: (direction) {
-                                          // Handle the dismissal action
-                                          if (mounted) {
-                                            setState(() {
-                                              isDismissed = true;
-                                              cancelClientRequest();
-                                            });
-                                          }
-                                        },
-                                        child: Container(
-                                          padding: const EdgeInsets.all(10),
-                                          child: const Text(
-                                            'Swipe to cancel!',
-                                            style: TextStyle(fontSize: 18),
-                                          ),
+                              child: SingleChildScrollView(
+                                controller: scrollController,
+                                child: Column(
+                                  children: [
+                                    Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.spaceBetween,
+                                      children: [
+                                        const Row(
+                                          children: [
+                                            CircleAvatar(
+                                              radius: 25,
+                                            ),
+                                            Padding(
+                                              padding: EdgeInsets.all(8.0),
+                                              child: Column(
+                                                crossAxisAlignment:
+                                                    CrossAxisAlignment.start,
+                                                mainAxisAlignment:
+                                                    MainAxisAlignment.center,
+                                                children: [
+                                                  Text(
+                                                    "Allen Swai",
+                                                    style: TextStyle(
+                                                        fontSize: 13,
+                                                        fontWeight:
+                                                            FontWeight.w600),
+                                                  ),
+                                                  Text(
+                                                    "Client",
+                                                    style: TextStyle(
+                                                        fontSize: 11,
+                                                        fontWeight:
+                                                            FontWeight.w500),
+                                                  ),
+                                                ],
+                                              ),
+                                            )
+                                          ],
                                         ),
-                                        // Customize the background and secondaryBackground
-                                        background: Container(
-                                          color: Colors.red,
-                                          alignment: Alignment.centerLeft,
-                                          padding: const EdgeInsets.symmetric(
-                                              horizontal: 20),
-                                          child: const Icon(
-                                            Icons.cancel,
-                                            color: Colors.white,
-                                            size: 30,
-                                          ),
-                                        ),
-                                        secondaryBackground: Container(
-                                          color: Colors.red,
-                                          alignment: Alignment.centerRight,
-                                          padding: const EdgeInsets.symmetric(
-                                              horizontal: 20),
-                                          child: const Icon(
-                                            Icons.cancel,
-                                            color: Colors.white,
-                                            size: 30,
-                                          ),
-                                        ),
-                                      ),
-                              ),
-                            ],
-                          ),
-                        ));
-                  },
-                );
+                                        (isSelected)
+                                            ? Container(
+                                                width: 35,
+                                                height: 35,
+                                                decoration: const BoxDecoration(
+                                                  borderRadius:
+                                                      BorderRadius.all(
+                                                    Radius.circular(35),
+                                                  ),
+                                                  color: Colors.blue,
+                                                ),
+                                                child: const Icon(
+                                                  Icons.phone,
+                                                  size: 18,
+                                                  color: Colors.white,
+                                                ),
+                                              )
+                                            : Container(),
+                                      ],
+                                    ),
+                                    const SizedBox(
+                                      height: 20,
+                                    ),
+                                    (!isSelected)
+                                        ? Column(
+                                            children: [
+                                              Row(
+                                                mainAxisAlignment:
+                                                    MainAxisAlignment
+                                                        .spaceBetween,
+                                                children: [
+                                                  Column(
+                                                      crossAxisAlignment:
+                                                          CrossAxisAlignment
+                                                              .start,
+                                                      mainAxisAlignment:
+                                                          MainAxisAlignment
+                                                              .start,
+                                                      children: [
+                                                        const Text(
+                                                            "Package type"),
+                                                        Text(
+                                                            request.packageType,
+                                                            style: const TextStyle(
+                                                                fontWeight:
+                                                                    FontWeight
+                                                                        .bold)),
+                                                      ]),
+                                                  Column(children: [
+                                                    const Text("Package size"),
+                                                    Text(
+                                                      '${request.packageSize} Ton',
+                                                      style: const TextStyle(
+                                                          fontWeight:
+                                                              FontWeight.bold),
+                                                    ),
+                                                  ])
+                                                ],
+                                              ),
+                                              const Divider(),
+                                              const SizedBox(
+                                                height: 5,
+                                              ),
+                                              Row(
+                                                mainAxisAlignment:
+                                                    MainAxisAlignment
+                                                        .spaceBetween,
+                                                children: [
+                                                  Column(
+                                                      crossAxisAlignment:
+                                                          CrossAxisAlignment
+                                                              .start,
+                                                      mainAxisAlignment:
+                                                          MainAxisAlignment
+                                                              .start,
+                                                      children: [
+                                                        const Text(
+                                                            "Destination"),
+                                                        Text(
+                                                            request.destination,
+                                                            style: const TextStyle(
+                                                                fontWeight:
+                                                                    FontWeight
+                                                                        .bold)),
+                                                      ]),
+                                                  Column(
+                                                    children: [
+                                                      const Text(
+                                                          "Distance (Kilometer)"),
+                                                      Text(
+                                                        '${_distance.toString()}',
+                                                        style: TextStyle(
+                                                            fontWeight:
+                                                                FontWeight
+                                                                    .bold),
+                                                      ),
+                                                    ],
+                                                  )
+                                                ],
+                                              ),
+                                              Divider(),
+                                              const SizedBox(
+                                                height: 10,
+                                              ),
+                                              (request.pictureUrl == null)
+                                                  ? Text("Loading image...")
+                                                  : Image.network(
+                                                      "${request.pictureUrl}"),
+                                              const SizedBox(height: 10),
+                                              Row(
+                                                  mainAxisAlignment:
+                                                      MainAxisAlignment
+                                                          .spaceBetween,
+                                                  children: [
+                                                    Text("Bid Price"),
+                                                    Text(
+                                                      '${request.estimatedPrice.toString()} Tsh',
+                                                      style: TextStyle(
+                                                          fontSize: 18,
+                                                          fontWeight:
+                                                              FontWeight.bold),
+                                                    ),
+                                                  ]),
+                                              const SizedBox(height: 10),
+                                              TextField(
+                                                controller: controller,
+                                                onTap: () {},
+                                                decoration: InputDecoration(
+                                                  contentPadding:
+                                                      EdgeInsets.zero,
+                                                  // prefixIcon: const Icon(Icons.location_on),
+                                                  hintText:
+                                                      "Enter Bid price upto ${request.estimatedPrice.toString()}",
+                                                  hintStyle:
+                                                      TextStyle(fontSize: 15),
+                                                ),
+                                              ),
+                                            ],
+                                          )
+                                        : SizedBox(),
+                                    const SizedBox(height: 10),
+                                    (!isSelected)
+                                        ? CustomePrimaryButton(
+                                            title: "Accept Request",
+                                            press: () {
+                                              acceptRequest(
+                                                  controller,
+                                                  request.estimatedPrice,
+                                                  request.id);
+                                            },
+                                            isWithOnlyBorder: false,
+                                            isLoading: _isLoading)
+                                        : CustomePrimaryButton(
+                                            title: (_isLoading)
+                                                ? "wait..."
+                                                : "Confirm Pickup",
+                                            press: () {
+                                              _confirmRequest(request.id);
+                                            },
+                                            isWithOnlyBorder: false,
+                                            isLoading: false),
+                                    const SizedBox(
+                                      height: 5,
+                                    ),
+                                    Center(
+                                      child: isRequestCanceled
+                                          ? const Text(
+                                              'Request Canceled',
+                                              style: TextStyle(
+                                                  fontSize: 18,
+                                                  color: Colors.red),
+                                            )
+                                          : Dismissible(
+                                              key: UniqueKey(),
+                                              direction:
+                                                  DismissDirection.horizontal,
+                                              onDismissed: (direction) {
+                                                // Handle the dismissal action
+                                                if (mounted) {
+                                                  setState(() {
+                                                    isDismissed = true;
+                                                    cancelClientRequest();
+                                                  });
+                                                }
+                                              },
+                                              child: Container(
+                                                padding:
+                                                    const EdgeInsets.all(10),
+                                                child: const Text(
+                                                  'Swipe to cancel!',
+                                                  style:
+                                                      TextStyle(fontSize: 18),
+                                                ),
+                                              ),
+                                              // Customize the background and secondaryBackground
+                                              background: Container(
+                                                color: Colors.red,
+                                                alignment: Alignment.centerLeft,
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                        horizontal: 20),
+                                                child: const Icon(
+                                                  Icons.cancel,
+                                                  color: Colors.white,
+                                                  size: 30,
+                                                ),
+                                              ),
+                                              secondaryBackground: Container(
+                                                color: Colors.red,
+                                                alignment:
+                                                    Alignment.centerRight,
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                        horizontal: 20),
+                                                child: const Icon(
+                                                  Icons.cancel,
+                                                  color: Colors.white,
+                                                  size: 30,
+                                                ),
+                                              ),
+                                            ),
+                                    ),
+                                  ],
+                                ),
+                              ));
+                        },
+                      );
               }
             },
           )
